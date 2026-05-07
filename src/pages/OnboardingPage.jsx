@@ -397,8 +397,32 @@ export default function OnboardingPage() {
           <div style={{ fontSize:26, fontWeight:800, fontFamily:"'Barlow Condensed',sans-serif", marginBottom:24 }}>{cur?.title}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {cur?.isDate ? (
-              <input type="date" onChange={e => handleOption(e.target.value)}
-                style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:14, padding:'16px', color:T.text, fontSize:16, fontFamily:"'Barlow Condensed',sans-serif", fontWeight:700 }}/>
+              <div>
+                <div style={{ fontSize:13, color:T.muted, marginBottom:14, lineHeight:1.5 }}>
+                  Selecciona la fecha de tu carrera. Si aún no la tienes clara puedes cambiarla después desde Ajustes.
+                </div>
+                <input type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => e.target.value && handleOption(e.target.value)}
+                  style={{ width:'100%', background:T.card, border:`2px solid ${T.orange}`, borderRadius:14, padding:'18px 16px', color:T.text, fontSize:18, fontFamily:"'Barlow Condensed',sans-serif", fontWeight:700, colorScheme:'dark' }}/>
+                <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+                  <div style={{ fontSize:11, color:T.muted, fontFamily:"'Barlow Condensed',sans-serif", letterSpacing:'0.1em' }}>CARRERAS POPULARES 2026</div>
+                  {[
+                    ['Valencia Half Marathon', '2026-11-29'],
+                    ['Barcelona Half Marathon', '2026-02-15'],
+                    ['Madrid Half Marathon',    '2026-04-26'],
+                    ['Sevilla Half Marathon',   '2026-02-22'],
+                  ].map(([name, date]) => (
+                    <button key={date} onClick={() => handleOption(date)} style={{
+                      background:T.surface, border:`1px solid ${T.border}`, borderRadius:12,
+                      padding:'12px 14px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+                    }}>
+                      <span style={{ fontSize:14, color:T.text, fontWeight:600 }}>{name}</span>
+                      <span style={{ fontSize:12, color:T.muted }}>{new Date(date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               cur?.options?.map(opt => (
                 <button key={opt} onClick={() => handleOption(opt)} style={{
