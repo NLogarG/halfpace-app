@@ -1,18 +1,41 @@
+export const maxDuration = 60
 import { createClient } from '@supabase/supabase-js'
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { userId, level, goalTime, trainDays, trainingDays, longRunDay, raceDate } = req.body
+  const {
+    userId,
+    level,
+    goalTime,
+    trainDays,
+    trainingDays,
+    longRunDay,
+    raceDate
+  } = req.body
 
   // Build human-readable day schedule for Claude
-  const DAYS_ES = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo']
-  const trainingDayNames = (trainingDays || [1,3,5,6]).map(d => DAYS_ES[d]).join(', ')
-  const longRunDayName   = DAYS_ES[longRunDay ?? 5]
-  const restDays         = [0,1,2,3,4,5,6]
-    .filter(d => !(trainingDays || [1,3,5,6]).includes(d))
-    .map(d => DAYS_ES[d]).join(', ')
+  const DAYS_ES = [
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado',
+    'domingo'
+  ]
+  const trainingDayNames = (trainingDays || [1, 3, 5, 6])
+    .map((d) => DAYS_ES[d])
+    .join(', ')
+  const longRunDayName = DAYS_ES[longRunDay ?? 5]
+  const restDays = [0, 1, 2, 3, 4, 5, 6]
+    .filter((d) => !(trainingDays || [1, 3, 5, 6]).includes(d))
+    .map((d) => DAYS_ES[d])
+    .join(', ')
 
   const prompt = `Genera un plan de entrenamiento de 12 semanas para media maratón en formato JSON.
 
@@ -43,37 +66,45 @@ Sin texto adicional, sin markdown, solo el array JSON.`
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+        messages: [{ role: 'user', content: prompt }]
+      })
     })
 
-    const data     = await response.json()
-    const raw      = data.content[0].text
-    const clean    = raw.replace(/```json|```/g, '').trim()
+    const data = await response.json()
+    const raw = data.content[0].text
+    const clean = raw.replace(/```json|```/g, '').trim()
     const sessions = JSON.parse(clean)
 
     // Validate and force correct rest days
-    const validated = sessions.map(s => {
-      const isTrainingDay = (trainingDays || [1,3,5,6]).includes(s.day_of_week)
+    const validated = sessions.map((s) => {
+      const isTrainingDay = (trainingDays || [1, 3, 5, 6]).includes(
+        s.day_of_week
+      )
       if (!isTrainingDay && s.type !== 'rest') {
-        return { ...s, type: 'rest', km: 0, pace_target: null, zone: null, notes: 'Descanso' }
+        return {
+          ...s,
+          type: 'rest',
+          km: 0,
+          pace_target: null,
+          zone: null,
+          notes: 'Descanso'
+        }
       }
       return s
     })
 
     await supabase.from('plans').delete().eq('user_id', userId)
-    const { error } = await supabase.from('plans').insert(
-      validated.map(s => ({ ...s, user_id: userId }))
-    )
+    const { error } = await supabase
+      .from('plans')
+      .insert(validated.map((s) => ({ ...s, user_id: userId })))
 
     if (error) throw error
     res.status(200).json({ ok: true, sessions: validated.length })
-
   } catch (err) {
     console.error('Plan generation error:', err)
     res.status(500).json({ error: err.message })
